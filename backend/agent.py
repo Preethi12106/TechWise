@@ -10,6 +10,10 @@ from decision_retriever import retrieve_decisions
 from decision_impact_analyzer import analyze_impact
 
 
+# ============================================================
+# LOAD ENVIRONMENT VARIABLES
+# ============================================================
+
 # Load .env from project root
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(env_path)
@@ -19,6 +23,10 @@ api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     raise ValueError("GEMINI_API_KEY not found in .env")
 
+
+# ============================================================
+# GEMINI CLIENT
+# ============================================================
 
 client = genai.Client(api_key=api_key)
 
@@ -36,6 +44,10 @@ def record_decision_tool(
     alternatives,
     consequences
 ):
+    """
+    Store a software engineering decision in SQLite.
+    """
+
     decision_id = record_decision(
         decision,
         context,
@@ -52,6 +64,9 @@ def record_decision_tool(
 
 
 def retrieve_decisions_tool(keyword):
+    """
+    Search stored decisions using keywords.
+    """
 
     results = retrieve_decisions(keyword)
 
@@ -75,6 +90,10 @@ def analyze_impact_tool(
     decision_id,
     new_requirement
 ):
+    """
+    Retrieve a stored decision and prepare its information
+    for impact analysis.
+    """
 
     result = analyze_impact(
         decision_id,
@@ -156,7 +175,9 @@ retrieve_decisions_function = {
                 )
             }
         },
-        "required": ["keyword"]
+        "required": [
+            "keyword"
+        ]
     }
 }
 
@@ -195,7 +216,11 @@ analyze_impact_function = {
 # AVAILABLE TOOLS
 # ============================================================
 
+# Three custom TechWise tools + Gemini's built-in Google Search
 tools = [
+    {
+        "type": "google_search"
+    },
     record_decision_function,
     retrieve_decisions_function,
     analyze_impact_function
@@ -209,15 +234,25 @@ tools = [
 def execute_tool(name, arguments):
 
     if name == "record_decision":
-        return record_decision_tool(**arguments)
+
+        return record_decision_tool(
+            **arguments
+        )
 
     elif name == "retrieve_decisions":
-        return retrieve_decisions_tool(**arguments)
+
+        return retrieve_decisions_tool(
+            **arguments
+        )
 
     elif name == "analyze_impact":
-        return analyze_impact_tool(**arguments)
+
+        return analyze_impact_tool(
+            **arguments
+        )
 
     else:
+
         return {
             "error": f"Unknown custom tool: {name}"
         }
@@ -233,25 +268,66 @@ You are TechWise, a software engineering decision assistant.
 Your purpose is to help developers make and review technology
 and architecture decisions.
 
-You have access to three tools:
+You have access to three custom tools:
 
 1. Decision Recorder
 2. Decision Retriever
 3. Decision Impact Analyzer
 
+You also have access to Google Search for current web research.
+
 Use tools dynamically based on the user's request.
 
 Do NOT automatically call every tool.
 
-Use memory when the user asks about an existing decision.
+============================================================
+DECISION MEMORY
+============================================================
 
-Use the decision retriever when you need to find a previous
-decision stored in memory.
+Use the decision retriever when the user asks about an
+existing decision or when a previous decision is relevant
+to the question.
 
-Use the impact analyzer when a stored decision is being
-evaluated against a changed requirement.
+Never invent stored decisions.
 
-For a changed requirement:
+============================================================
+WEB RESEARCH
+============================================================
+
+Use Google Search when current or external information would
+improve the answer.
+
+Examples include:
+
+- Current technology capabilities
+- Current framework features
+- Current library versions
+- Current cloud/platform support
+- Current industry practices
+- Technology comparisons
+- Recent changes in software technologies
+- Current documentation
+- Current official recommendations
+
+Prefer reliable and authoritative sources such as:
+
+- Official documentation
+- Official technology websites
+- Official cloud/provider documentation
+- Reputable technical sources
+
+Do not use web search when it is unnecessary for a simple
+question that can be answered reliably without current data.
+
+When web research is used, incorporate the relevant findings
+into the recommendation and preserve the source citations
+provided by Gemini.
+
+============================================================
+IMPACT ANALYSIS
+============================================================
+
+When a changed requirement is being evaluated:
 
 1. Identify the relevant previous decision.
 2. Retrieve the stored decision.
@@ -262,8 +338,14 @@ For a changed requirement:
 7. Understand the new requirement.
 8. Identify what changed.
 9. Determine whether the original reason is still valid.
-10. Compare the existing technology with alternatives.
-11. Make the final recommendation.
+10. Use Google Search when current technical information
+    is useful.
+11. Compare the existing technology with relevant alternatives.
+12. Make the final recommendation.
+
+============================================================
+RECOMMENDATIONS
+============================================================
 
 For technical recommendations, use this format:
 
@@ -272,27 +354,33 @@ Recommendation: KEEP / RECONSIDER / REPLACE
 Reason:
 Explain why.
 
+Web Research:
+Summarize important current findings when web research
+was used.
+
 Trade-offs:
 Explain the important advantages and disadvantages.
 
 Suggested next step:
 Give a practical next action.
 
-IMPORTANT:
+============================================================
+IMPORTANT
+============================================================
 
-Never invent stored decisions.
-
-Do not record a new decision unless the user explicitly asks
-you to save or record it.
+Do not record a new decision unless the user explicitly
+asks you to save or record it.
 
 A recommendation is NOT automatically a new decision.
 
 If the user asks for a new recommendation and there is no
 stored decision, provide a recommendation based on your
-software engineering knowledge.
+software engineering knowledge and use Google Search when
+current information would materially improve the answer.
 
 Be concise, practical, and technically accurate.
 """
+
 
 # ============================================================
 # AGENT LOOP
@@ -315,8 +403,10 @@ def run_agent(user_message):
             if step.type == "function_call"
         ]
 
-        # No more custom function calls
+        # If there are no custom function calls,
+        # return Gemini's final response.
         if not function_calls:
+
             return interaction.output_text
 
         function_results = []
@@ -352,6 +442,8 @@ def run_agent(user_message):
                 ]
             })
 
+        # Continue the same Gemini interaction after
+        # executing the custom function tools.
         interaction = client.interactions.create(
             model=MODEL,
             previous_interaction_id=interaction.id,
@@ -374,12 +466,17 @@ if __name__ == "__main__":
 
         user_message = input("\nYou: ")
 
-        if user_message.lower() in ["exit", "quit"]:
+        if user_message.lower() in [
+            "exit",
+            "quit"
+        ]:
             break
 
         try:
 
-            response = run_agent(user_message)
+            response = run_agent(
+                user_message
+            )
 
             print("\nTechWise:")
             print(response)
