@@ -119,7 +119,6 @@ function App() {
 
         </div>
 
-
         <div className="header-actions">
 
           <div className="status">
@@ -232,32 +231,6 @@ function App() {
 
               <span className="tool-label">
                 analyze_impact
-              </span>
-
-            </div>
-
-          </div>
-
-
-          {/* FEATURE 4 */}
-
-          <div className="feature-card">
-
-            <div className="feature-icon web">
-              🌐
-            </div>
-
-            <div className="feature-content">
-
-              <h3>Web Research</h3>
-
-              <p>
-                Access current technical information
-                when external knowledge is needed.
-              </p>
-
-              <span className="tool-label">
-                web_search
               </span>
 
             </div>
@@ -508,8 +481,6 @@ function App() {
         <span>Agent Tools</span>
 
         <span>Persistent Memory</span>
-
-        <span>Web Research</span>
 
       </footer>
 

@@ -1012,3 +1012,82 @@ footer span:not(:first-child)::before {
     margin-right: 8px;
   }
 }
+
+/* =========================================================
+   DARK / LIGHT MODE TEXT VISIBILITY FIX
+   ========================================================= */
+
+/* ---------- LIGHT MODE ---------- */
+
+.app.light .brand h1,
+.app.light .sidebar-heading h2,
+.app.light .chat-title h2 {
+  color: #111827;
+}
+
+.app.light .brand p,
+.app.light .sidebar-heading p,
+.app.light .chat-title p {
+  color: #6b7280;
+}
+
+
+/* ---------- DARK MODE ---------- */
+
+.app.dark .brand h1,
+.app.dark .sidebar-heading h2,
+.app.dark .chat-title h2 {
+  color: #ffffff;
+}
+
+.app.dark .brand p,
+.app.dark .sidebar-heading p,
+.app.dark .chat-title p {
+  color: #cbd5e1;
+}
+
+
+/* ---------- Feature headings ---------- */
+
+.app.light .feature-content h3,
+.app.light .quick-actions h3 {
+  color: #111827;
+}
+
+.app.dark .feature-content h3,
+.app.dark .quick-actions h3 {
+  color: #f8fafc;
+}
+
+
+/* ---------- Feature descriptions ---------- */
+
+.app.light .feature-content p {
+  color: #6b7280;
+}
+
+.app.dark .feature-content p {
+  color: #cbd5e1;
+}
+
+
+/* ---------- Tool labels ---------- */
+
+.app.light .tool-label {
+  color: #6366f1;
+}
+
+.app.dark .tool-label {
+  color: #a5b4fc;
+}
+
+
+/* ---------- Footer ---------- */
+
+.app.light footer {
+  color: #6b7280;
+}
+
+.app.dark footer {
+  color: #cbd5e1;
+}
