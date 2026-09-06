@@ -1091,3 +1091,21 @@ footer span:not(:first-child)::before {
 .app.dark footer {
   color: #cbd5e1;
 }
+
+/* =========================================================
+   WEB RESEARCH FEATURE
+   ========================================================= */
+
+.feature-icon.web {
+  background: var(--accent-soft);
+}
+
+/* Web research tool label */
+
+.app.light .feature-card .tool-label {
+  color: #6366f1;
+}
+
+.app.dark .feature-card .tool-label {
+  color: #a5b4fc;
+}

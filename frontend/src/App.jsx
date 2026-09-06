@@ -7,7 +7,7 @@ function App() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      text: "Hi! I'm TechWise. I can help you record, retrieve, and evaluate software engineering decisions."
+      text: "Hi! I'm TechWise. I can help you record, retrieve, evaluate, and research software engineering decisions."
     }
   ]);
 
@@ -238,6 +238,32 @@ function App() {
           </div>
 
 
+          {/* FEATURE 4 */}
+
+          <div className="feature-card">
+
+            <div className="feature-icon web">
+              🌐
+            </div>
+
+            <div className="feature-content">
+
+              <h3>Web Research</h3>
+
+              <p>
+                Search current technical information
+                when up-to-date research is needed.
+              </p>
+
+              <span className="tool-label">
+                google_search
+              </span>
+
+            </div>
+
+          </div>
+
+
           {/* QUICK ACTIONS */}
 
           <div className="quick-actions">
@@ -275,6 +301,17 @@ function App() {
             >
               <span>⚡</span>
               Evaluate decision
+            </button>
+
+            <button
+              onClick={() =>
+                useSuggestion(
+                  "Research the latest information about React vs Angular for enterprise applications."
+                )
+              }
+            >
+              <span>🌐</span>
+              Research technology
             </button>
 
           </div>
@@ -423,6 +460,16 @@ function App() {
                 Evaluate a decision
               </button>
 
+              <button
+                onClick={() =>
+                  useSuggestion(
+                    "Research the latest information about React vs Angular for enterprise applications."
+                  )
+                }
+              >
+                🌐 Research technology
+              </button>
+
             </div>
 
 
@@ -479,6 +526,8 @@ function App() {
         <span>LLM</span>
 
         <span>Agent Tools</span>
+
+        <span>Web Research</span>
 
         <span>Persistent Memory</span>
 
