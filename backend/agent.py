@@ -28,10 +28,10 @@ client = OpenAI(api_key=api_key)
 
 def record_decision_tool(
     decision,
-    context,
-    reason,
-    alternatives,
-    consequences
+    context="",
+    reason="",
+    alternatives="",
+    consequences=""
 ):
     decision_id = record_decision(
         decision,
@@ -90,6 +90,10 @@ def analyze_impact_tool(decision_id, new_requirement):
 tools = [
 
     {
+        "type": "web_search"
+    },
+
+    {
         "type": "function",
         "name": "record_decision",
         "description": "Record a software engineering decision in persistent memory.",
@@ -112,13 +116,7 @@ tools = [
                     "type": "string"
                 }
             },
-            "required": [
-                "decision",
-                "context",
-                "reason",
-                "alternatives",
-                "consequences"
-            ]
+            "required": ["decision"]
         }
     },
 
@@ -165,19 +163,28 @@ tools = [
 # -----------------------------
 
 def execute_tool(name, arguments):
+    tool_handlers = {
+        "record_decision": record_decision_tool,
+        "retrieve_decisions": retrieve_decisions_tool,
+        "analyze_impact": analyze_impact_tool,
+    }
 
-    if name == "record_decision":
-        return record_decision_tool(**arguments)
+    handler = tool_handlers.get(name)
 
-    elif name == "retrieve_decisions":
-        return retrieve_decisions_tool(**arguments)
+    if handler is None:
+        return {"success": False, "error": f"Unknown tool: {name}"}
 
-    elif name == "analyze_impact":
-        return analyze_impact_tool(**arguments)
-
-    else:
+    try:
+        return handler(**arguments)
+    except (TypeError, ValueError, KeyError) as error:
         return {
-            "error": f"Unknown tool: {name}"
+            "success": False,
+            "error": f"Invalid arguments for {name}: {error}"
+        }
+    except Exception as error:
+        return {
+            "success": False,
+            "error": f"{name} failed: {error}"
         }
 
 
@@ -187,62 +194,93 @@ def execute_tool(name, arguments):
 
 def run_agent(user_message):
 
+    instructions = (
+        "You are TechWise, an AI software engineering decision assistant.\n"
+        "You help developers record software engineering decisions, retrieve historical "
+        "decisions, evaluate them against changed requirements, research current technical "
+        "information, and provide independent recommendations.\n\n"
+        "Persistent SQLite memory represents historical project decisions. Web search "
+        "represents current or external technical information. Reason over these sources; "
+        "do not invent facts or claim that a recommendation came from memory.\n\n"
+        "Use persistent memory when the user asks about a previous decision or when a new "
+        "requirement may affect an existing decision. Use web search only when current or "
+        "external information is useful. Use both when evaluating a historical decision and "
+        "current information matters. Do not use tools unnecessarily.\n\n"
+        "For a changed requirement, identify the relevant historical decision, retrieve it, "
+        "compare its original context and reasoning with the new requirement, and use the "
+        "analyze_impact tool as evidence. The analyzer does not decide the outcome; you do.\n\n"
+        "Clearly distinguish historical information from memory, current information from "
+        "web research, and your recommendation. When giving a technical recommendation, "
+        "use exactly this structure:\n"
+        "Recommendation: KEEP, RECONSIDER, or REPLACE\n"
+        "Reason: explain the evidence and reasoning\n"
+        "Trade-offs: explain important advantages and disadvantages\n"
+        "Suggested next step: give a practical action\n"
+        "Use KEEP when the original decision still fits, RECONSIDER when important trade-offs "
+        "need evaluation, and REPLACE when it is no longer a good fit. Do not choose arbitrarily.\n\n"
+        "A recommendation is not automatically a decision. Never modify or overwrite a "
+        "historical decision unless the user explicitly asks to record a new decision. "
+        "For simple retrieval questions, answer from stored evidence without unnecessary web search."
+    )
+
     response = client.responses.create(
         model="gpt-5.6-luna",
-        input=[
-            {
-                "role": "system",
-                "content": (
-                    "You are TechWise, an AI software engineering "
-                    "decision assistant. You help developers record, "
-                    "retrieve, and evaluate software engineering decisions. "
-                    "Use the available tools whenever they are relevant. "
-                    "Do not invent information that is not stored in memory."
-                )
-            },
-            {
-                "role": "user",
-                "content": user_message
-            }
-        ],
+        instructions=instructions,
+        input=user_message,
         tools=tools
     )
 
-    # Check whether the LLM requested a tool
-    for item in response.output:
+    while True:
 
-        if item.type == "function_call":
+        tool_calls = [
+            item
+            for item in response.output
+            if item.type == "function_call"
+        ]
+
+        # No more tools needed → final answer
+        if not tool_calls:
+            return response.output_text
+
+        tool_outputs = []
+
+        for item in tool_calls:
 
             tool_name = item.name
 
-            arguments = json.loads(item.arguments)
-
-            print(f"\nTool selected: {tool_name}")
-            print(f"Arguments: {arguments}")
+            try:
+                arguments = json.loads(item.arguments)
+            except (TypeError, json.JSONDecodeError) as error:
+                tool_result = {
+                    "success": False,
+                    "error": f"Invalid JSON arguments for {tool_name}: {error}"
+                }
+                tool_outputs.append({
+                    "type": "function_call_output",
+                    "call_id": item.call_id,
+                    "output": json.dumps(tool_result)
+                })
+                continue
 
             tool_result = execute_tool(
                 tool_name,
                 arguments
             )
 
-            # Send tool result back to the LLM
-            second_response = client.responses.create(
-                model="gpt-5.6-luna",
-                previous_response_id=response.id,
-                input=[
-                    {
-                        "type": "function_call_output",
-                        "call_id": item.call_id,
-                        "output": json.dumps(tool_result)
-                    }
-                ]
-            )
+            tool_outputs.append({
+                "type": "function_call_output",
+                "call_id": item.call_id,
+                "output": json.dumps(tool_result)
+            })
 
-            return second_response.output_text
-
-    return response.output_text
-
-
+        # Send tool results back to the LLM
+        response = client.responses.create(
+            model="gpt-5.6-luna",
+            previous_response_id=response.id,
+            instructions=instructions,
+            input=tool_outputs,
+            tools=tools
+        )
 # -----------------------------
 # CHAT LOOP
 # -----------------------------
